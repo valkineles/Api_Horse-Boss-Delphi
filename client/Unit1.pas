@@ -5,7 +5,7 @@ interface
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, IPPeerClient, System.Generics.Collections ,
-  Data.Bind.Components, Data.Bind.ObjectScope, REST.Client, Rest.Json,
+  Data.Bind.Components, Data.Bind.ObjectScope, REST.Client, Rest.Json, IdHashMessageDigest, IdHash,
   REST.Authenticator.Basic, System.JSON, REST.Response.Adapter;
 
 
@@ -79,9 +79,12 @@ type
     Button2: TButton;
     Button4: TButton;
     Edit: TEdit;
+    Button3: TButton;
+    edtMd5: TEdit;
     procedure Button1Click(Sender: TObject);
     procedure Button2Click(Sender: TObject);
     procedure Button4Click(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
   private
     { Private declarations }
   public
@@ -135,6 +138,22 @@ begin
   vCidade := TJson.JsonToObject<TCidade>(memo.Lines.Text);
 
   ShowMessage(vCidade.CIDADE+' - '+vCidade.NOME);
+end;
+
+procedure TForm1.Button3Click(Sender: TObject);
+  function MD5String(const Value: string): string;
+  var
+    xMD5: TIdHashMessageDigest5;
+  begin
+    xMD5 := TIdHashMessageDigest5.Create;
+    try
+      Result := xMD5.HashStringAsHex(Value);
+    finally
+      xMD5.Free;
+    end;
+  end;
+begin
+  ShowMessage(MD5String(edtMd5.Text));
 end;
 
 procedure TForm1.Button4Click(Sender: TObject);
