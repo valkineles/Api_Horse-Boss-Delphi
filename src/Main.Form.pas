@@ -5,8 +5,13 @@ interface
 uses Winapi.Windows, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
   Vcl.Buttons, System.SysUtils, Data.DB, MemDS, DBAccess, Ora, OraCall,
-  System.JSON,
-  DBClient, Datasnap.Provider, Vcl.Grids, Vcl.DBGrids;
+  System.JSON, Registry, Winapi.Messages,
+  DBClient, Datasnap.Provider, Vcl.Grids, Vcl.DBGrids, Vcl.Menus,
+  System.ImageList, Vcl.ImgList, Vcl.ExtCtrls;
+
+const
+  WM_MY_MESSAGE = WM_USER + 1;
+  InputBoxMsg = WM_USER + 123;
 
 type
   TFrmVCL = class(TForm)
@@ -35,15 +40,31 @@ type
     qryCidadesTOLERANCIA_DIAS_JUROS: TIntegerField;
     qryCidadesUSUARIO_ALTERACAO: TStringField;
     qryCidadesVALOR_MINIMO_PEDIDO: TFloatField;
-    DataSource1: TDataSource;
-    DBGrid1: TDBGrid;
+    TrayIcon1: TTrayIcon;
+    ImageList1: TImageList;
+    PopupMenu1: TPopupMenu;
+    Close1: TMenuItem;
+    Restaurar1: TMenuItem;
+    Button1: TButton;
+    lblStatus: TLabel;
+    Button2: TButton;
+    Memo: TMemo;
+    Button3: TButton;
     procedure btnStopClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure btnStartClick(Sender: TObject);
+    procedure Close1Click(Sender: TObject);
+    procedure Restaurar1Click(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+    procedure TrayIcon1DblClick(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
+    procedure Button3Click(Sender: TObject);
   private
+    bolLog : Boolean;
     procedure Status;
     procedure Start;
     procedure Stop;
+    procedure InstalarServico;
   end;
 
 var
@@ -60,6 +81,11 @@ procedure TFrmVCL.FormClose(Sender: TObject; var Action: TCloseAction);
 begin
   if THorse.IsRunning then
     Stop;
+end;
+
+procedure TFrmVCL.Restaurar1Click(Sender: TObject);
+begin
+  TrayIcon1DblClick(self);
 end;
 
 procedure TFrmVCL.Start;
@@ -92,10 +118,16 @@ begin
         qryCidades.SQL.Add(' where cidade = ' + Req.Params.Items['id']);
       qryCidades.Open;
       Res.Send<TJSONObject>(qryCidades.ToJSONObject);
-    end;
-  end);
 
-THorse.Listen(8080);
+      if bolLog then
+      begin
+        memo.Lines.Add(THorse.Host + ' - '+ Req.Params.Items['id']);
+      end;
+    end);
+
+
+
+  THorse.Listen(8080);
 end;
 
 procedure TFrmVCL.Status;
@@ -119,6 +151,14 @@ begin
   THorse.StopListen;
 end;
 
+procedure TFrmVCL.TrayIcon1DblClick(Sender: TObject);
+begin
+  TrayIcon1.Visible := False;
+  Show();
+  WindowState := wsNormal;
+  Application.BringToFront();
+end;
+
 procedure TFrmVCL.btnStartClick(Sender: TObject);
 begin
   Start;
@@ -131,5 +171,117 @@ begin
   Status;
 end;
 
+procedure TFrmVCL.Button1Click(Sender: TObject);
+begin
+  Self.Hide();
+  Self.WindowState := wsMinimized;
+  TrayIcon1.Visible := True;
+  TrayIcon1.Animate := True;
+  TrayIcon1.ShowBalloonHint;
+end;
+
+procedure TFrmVCL.Button2Click(Sender: TObject);
+begin
+  InstalarServico;
+end;
+
+procedure TFrmVCL.Button3Click(Sender: TObject);
+begin
+  bolLog := not bolLog;
+end;
+
+procedure TFrmVCL.Close1Click(Sender: TObject);
+begin
+  Close;
+end;
+
+procedure TFrmVCL.InstalarServico();
+var
+  vExe: String;
+  ResStream: TResourceStream;
+  vRegistry: TRegistry;
+  vMaquina, vUsuario, vSenha, _LocalExe: String;
+begin
+  _LocalExe := IncludeTrailingPathDelimiter(ExtractFilePath(Application.ExeName));
+  try
+    vExe := 'instsrv';
+    if not FileExists(_LocalEXE + vExe + '.exe') then
+    begin
+      ResStream := TResourceStream.Create(HInstance, vExe, RT_RCDATA);
+      try
+        ResStream.Position := 0;
+        ResStream.SaveToFile(_LocalEXE + vExe + '.exe');
+      finally
+        ResStream.Free;
+      end;
+    end;
+
+    vExe := 'srvany';
+    if not FileExists(_LocalEXE + vExe + '.exe') then
+    begin
+      ResStream := TResourceStream.Create(HInstance, vExe, RT_RCDATA);
+      try
+        ResStream.Position := 0;
+        ResStream.SaveToFile(_LocalEXE + vExe + '.exe');
+      finally
+        ResStream.Free;
+      end;
+    end;
+
+    vExe := 'ntrights';
+    if not FileExists(_LocalEXE + vExe + '.exe') then
+    begin
+      ResStream := TResourceStream.Create(HInstance, vExe, RT_RCDATA);
+      try
+        ResStream.Position := 0;
+        ResStream.SaveToFile(_LocalEXE + vExe + '.exe');
+      finally
+        ResStream.Free;
+      end;
+    end;
+
+    vUsuario := GetEnvironmentVariable('USERNAME');
+    vMaquina := GetEnvironmentVariable('COMPUTERNAME');
+
+    //Buscar senha do usuário
+    PostMessage(Handle, InputBoxMsg, 0, 0);
+    vSenha := InputBox('Autenticação', 'Informe sua senha (para login do WINDOWS):', '');
+
+    lblStatus.Caption := 'Aguarde, instalando...';
+
+    //Libera o usuário para fazer logon como serviço
+    WinExec(PAnsiChar(AnsiString('"' + _LocalEXE + 'ntrights.exe" +r SeServiceLogonRight -u ' + vMaquina + '\' + vUsuario)), SW_HIDE);
+
+    //Cria o serviço
+    WinExec(PAnsiChar(AnsiString('"' + _LocalEXE + 'instsrv.exe" "HivaAPI" "' + _LocalEXE + 'srvany.exe"')), SW_HIDE);
+
+    Sleep(8000);
+
+    //Configura o usuário para iniciar o servico
+    //Nota: os espaços depois de "obj=" e "password=" são obrigatórios!
+    WinExec(PAnsiChar(AnsiString('sc.exe config "HivaAPI" obj= ".\' + vUsuario + '" password= "' + vSenha + '"')), SW_HIDE);
+
+    //Configura o serviço
+    //HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\MEU_SERVICO
+    vRegistry := TRegistry.Create;
+    vRegistry.RootKey := HKEY_LOCAL_MACHINE;
+    if not vRegistry.OpenKey('SYSTEM\\CurrentControlSet\\Services\\HivaAPI', False) then
+    begin
+      Sleep(3000);
+      vRegistry.OpenKey('SYSTEM\\CurrentControlSet\\Services\\HivaAPI', False);
+    end;
+    vRegistry.OpenKey('Parameters', True);
+    vRegistry.WriteString('Application', ParamStr(0));
+    vRegistry.WriteString('AppDirectory', _LocalEXE);
+    vRegistry.CloseKey;
+    vRegistry.Free;
+    showmessage('Serviço instalado com sucesso!');
+  except
+    on E: Exception do
+    begin
+     showmessage('Houve um problema ao instalar a aplicação como um serviço. Tente novamente. Erro: ' + E.Message);
+    end;
+  end;
+end;
 end.
 

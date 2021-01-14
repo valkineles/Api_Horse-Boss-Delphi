@@ -31,6 +31,27 @@ object FrmVCL: TFrmVCL
     Height = 13
     Caption = 'Port:'
   end
+  object lblStatus: TLabel
+    AlignWithMargins = True
+    Left = 3
+    Top = 3
+    Width = 442
+    Height = 30
+    Margins.Right = 10
+    Align = alTop
+    Alignment = taCenter
+    AutoSize = False
+    Caption = 'Desconectado'
+    Font.Charset = ANSI_CHARSET
+    Font.Color = clRed
+    Font.Height = -21
+    Font.Name = 'Segoe UI'
+    Font.Style = []
+    ParentFont = False
+    Layout = tlCenter
+    StyleElements = [seClient, seBorder]
+    ExplicitWidth = 497
+  end
   object btnStop: TBitBtn
     Left = 127
     Top = 53
@@ -50,18 +71,39 @@ object FrmVCL: TFrmVCL
     TabOrder = 1
     OnClick = btnStartClick
   end
-  object DBGrid1: TDBGrid
-    Left = 56
-    Top = 216
-    Width = 337
-    Height = 129
-    DataSource = DataSource1
+  object Button1: TButton
+    Left = 24
+    Top = 104
+    Width = 75
+    Height = 25
+    Caption = 'Fechar'
     TabOrder = 2
-    TitleFont.Charset = DEFAULT_CHARSET
-    TitleFont.Color = clWindowText
-    TitleFont.Height = -11
-    TitleFont.Name = 'Tahoma'
-    TitleFont.Style = []
+    OnClick = Button1Click
+  end
+  object Button2: TButton
+    Left = 165
+    Top = 104
+    Width = 116
+    Height = 25
+    Caption = 'Install Service'
+    TabOrder = 3
+    OnClick = Button2Click
+  end
+  object Memo: TMemo
+    Left = 8
+    Top = 192
+    Width = 439
+    Height = 168
+    TabOrder = 4
+  end
+  object Button3: TButton
+    Left = 372
+    Top = 136
+    Width = 75
+    Height = 25
+    Caption = 'Log'
+    TabOrder = 5
+    OnClick = Button3Click
   end
   object session: TOraSession
     Options.Direct = True
@@ -160,9 +202,27 @@ object FrmVCL: TFrmVCL
       Required = True
     end
   end
-  object DataSource1: TDataSource
-    DataSet = qryCidades
-    Left = 312
+  object TrayIcon1: TTrayIcon
+    Icons = ImageList1
+    PopupMenu = PopupMenu1
+    OnDblClick = TrayIcon1DblClick
+    Left = 184
     Top = 136
+  end
+  object ImageList1: TImageList
+    Left = 128
+    Top = 136
+  end
+  object PopupMenu1: TPopupMenu
+    Left = 240
+    Top = 144
+    object Restaurar1: TMenuItem
+      Caption = 'Restaurar'
+      OnClick = Restaurar1Click
+    end
+    object Close1: TMenuItem
+      Caption = 'Close'
+      OnClick = Close1Click
+    end
   end
 end
