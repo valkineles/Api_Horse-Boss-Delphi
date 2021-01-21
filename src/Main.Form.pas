@@ -5,9 +5,11 @@ interface
 uses Winapi.Windows, System.Variants, System.Classes, Vcl.Graphics,
   Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls,
   Vcl.Buttons, System.SysUtils, Data.DB, MemDS, DBAccess, Ora, OraCall,
-  System.JSON, Registry, Winapi.Messages,
+  System.JSON, Registry, Winapi.Messages,     Web.HTTPApp,
   DBClient, Datasnap.Provider, Vcl.Grids, Vcl.DBGrids, Vcl.Menus,
-  System.ImageList, Vcl.ImgList, Vcl.ExtCtrls;
+  System.ImageList, Vcl.ImgList, Vcl.ExtCtrls,
+  Horse, Horse.Jhonson, Horse.Paginate, DataSet.Serialize,
+  Horse.BasicAuthentication;
 
 const
   WM_MY_MESSAGE = WM_USER + 1;
@@ -65,6 +67,9 @@ type
     procedure Start;
     procedure Stop;
     procedure InstalarServico;
+    procedure cidade(Req: THorseRequest; Res: THorseResponse; Next: TProc);
+    procedure cidadeById(Req: THorseRequest; Res: THorseResponse; Next: TProc);
+
   end;
 
 var
@@ -72,8 +77,6 @@ var
 
 implementation
 
-uses Horse, Horse.Jhonson, Horse.Paginate, DataSet.Serialize,
-  Horse.BasicAuthentication;
 
 {$R *.dfm}
 
@@ -92,38 +95,42 @@ procedure TFrmVCL.Start;
 begin
 
   THorse.Use(Jhonson()).Use(Paginate());
-  THorse.Use(HorseBasicAuthentication(
-    function(const AUsername, APassword: string): Boolean
-    begin
-      Result := AUsername.Equals('user') and APassword.Equals('password');
-    end));
+  THorse.Routes.RegisterRoute(mtGet,'/cidade', cidade);
+  THorse.Routes.RegisterRoute(mtGet,'/cidade/:id', cidadebyid);
+  THorse.Routes.RegisterRoute(mtPut,'/cidade/:id', cidadebyid);
 
-  THorse.Get('ping',
-    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
-    begin
-      qryCidades.Close;
-      qryCidades.SQL.Clear;
-      qryCidades.SQL.Add('select * from fat_cidades');
-      qryCidades.Open;
-      Res.Send<TJSONArray>(qryCidades.ToJSONArray);
-    end);
-
-  THorse.Get('ping/:id',
-    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
-    begin
-      qryCidades.Close;
-      qryCidades.SQL.Clear;
-      qryCidades.SQL.Add('select * from fat_cidades');
-      if (Req.Params.Count > 0) and (Req.Params.Items['id'] <> '') then
-        qryCidades.SQL.Add(' where cidade = ' + Req.Params.Items['id']);
-      qryCidades.Open;
-      Res.Send<TJSONObject>(qryCidades.ToJSONObject);
-
-      if bolLog then
-      begin
-        memo.Lines.Add(THorse.Host + ' - '+ Req.Params.Items['id']);
-      end;
-    end);
+//  THorse.Use(HorseBasicAuthentication(
+//    function(const AUsername, APassword: string): Boolean
+//    begin
+//      Result := AUsername.Equals('user') and APassword.Equals('password');
+//    end));
+//
+//  THorse.Get('ping',
+//    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+//    begin
+//      qryCidades.Close;
+//      qryCidades.SQL.Clear;
+//      qryCidades.SQL.Add('select * from fat_cidades');
+//      qryCidades.Open;
+//      Res.Send<TJSONArray>(qryCidades.ToJSONArray);
+//    end);
+//
+//  THorse.Get('ping/:id',
+//    procedure(Req: THorseRequest; Res: THorseResponse; Next: TProc)
+//    begin
+//      qryCidades.Close;
+//      qryCidades.SQL.Clear;
+//      qryCidades.SQL.Add('select * from fat_cidades');
+//      if (Req.Params.Count > 0) and (Req.Params.Items['id'] <> '') then
+//        qryCidades.SQL.Add(' where cidade = ' + Req.Params.Items['id']);
+//      qryCidades.Open;
+//      Res.Send<TJSONObject>(qryCidades.ToJSONObject);
+//
+//      if bolLog then
+//      begin
+//        memo.Lines.Add(THorse.Host + ' - '+ Req.Params.Items['id']);
+//      end;
+//    end);
 
 
 
@@ -188,6 +195,28 @@ end;
 procedure TFrmVCL.Button3Click(Sender: TObject);
 begin
   bolLog := not bolLog;
+end;
+
+procedure TFrmVCL.cidade(Req: THorseRequest; Res: THorseResponse; Next: TProc);
+begin
+  qryCidades.Close;
+  qryCidades.SQL.Clear;
+  qryCidades.SQL.Add('select * from fat_cidades');
+  qryCidades.Open;
+  Res.Send<TJSONArray>(qryCidades.ToJSONArray);
+end;
+
+procedure TFrmVCL.cidadeById(Req: THorseRequest; Res: THorseResponse;
+  Next: TProc);
+begin
+  qryCidades.Close;
+  qryCidades.SQL.Clear;
+  qryCidades.SQL.Add('select * from fat_cidades');
+  if (Req.Params.Count > 0) and (Req.Params.Items['id'] <> '') then
+    qryCidades.SQL.Add(' where cidade = ' + Req.Params.Items['id']);
+  qryCidades.Open;
+  Res.Send<TJSONObject>(qryCidades.ToJSONObject);
+
 end;
 
 procedure TFrmVCL.Close1Click(Sender: TObject);
